@@ -2,7 +2,7 @@
 
 > A premium, offline-first vehicle management dashboard built with Flutter.
 
-Tankly is a commercial-grade mobile application designed to help riders and drivers track their fuel efficiency, log maintenance records, and store critical vehicle documents in a secure, digital glovebox. Built with a focus on data integrity, offline reliability, and fluid UX.
+Tankly is a commercial-grade mobile application designed to help riders track their fuel efficiency, log maintenance records, and store critical vehicle documents in a secure, digital glovebox. Built with a focus on data integrity, offline reliability, and fluid UX.
 
 ---
 
@@ -25,7 +25,7 @@ Tankly is a commercial-grade mobile application designed to help riders and driv
 
 ## 📸 Screenshots
 
-*(Pro-tip: Once you push to GitHub, take 3 screenshots of your app running on an emulator: The Dashboard, The Add Fuel Modal, and the Bike Profile. Upload them to an `assets` folder in your repo and link them here!)*
+*(Add your screenshots here!)*
 
 |<img src="assets/dashboard.png" width="250"> | <img src="assets/add_fuel.png" width="250"> | <img src="assets/profile.png" width="250"> |
 |:---:|:---:|:---:|
@@ -37,4 +37,22 @@ To run this project locally:
 
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/yourusername/tankly.git](https://github.com/yourusername/tankly.git)
+   git clone [https://github.com/Lokeshreddy-047/tankly.git](https://github.com/Lokeshreddy-047/tankly.git)
+   Navigate to the project directory:
+
+Bash
+cd tankly
+Fetch dependencies:
+
+Bash
+flutter pub get
+Run the app:
+
+Bash
+flutter run
+🧠 Engineering Highlights
+The "Full Tank" Algorithm: Standard fuel trackers fail when users do partial fill-ups. Tankly's StatsHelper engine iterates chronologically to find bounds between guaranteed "Full Tanks" to ensure mileage metrics are mathematically flawless.
+
+Dynamic Theming: Implemented a global ValueNotifier to allow users to override system theme settings on the fly without requiring heavy state management packages.
+
+Designed & Built by M. Lokesh Reddy
