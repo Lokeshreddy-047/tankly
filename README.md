@@ -32,9 +32,9 @@ Tankly is a commercial-grade mobile application designed to help riders track th
 | **Rich Dashboard** | **Smart Logging** | **Digital Glovebox** |
 
 
-##🧠 Engineering Highlights
-The "Full Tank" Algorithm: Standard fuel trackers fail when users do partial fill-ups. Tankly's StatsHelper engine iterates chronologically to find bounds between guaranteed "Full Tanks" to ensure mileage metrics are mathematically flawless.
+## 🧠 Engineering Highlights
+**The "Full Tank" Algorithm:** Standard fuel trackers fail when users do partial fill-ups. Tankly's StatsHelper engine iterates chronologically to find bounds between guaranteed "Full Tanks" to ensure mileage metrics are mathematically flawless.
 
-Dynamic Theming: Implemented a global ValueNotifier to allow users to override system theme settings on the fly without requiring heavy state management packages.
+**Dynamic Theming:** Implemented a global ValueNotifier to allow users to override system theme settings on the fly without requiring heavy state management packages.
 
-Designed & Built by M. Lokesh Reddy
+**Designed & Built by M. Lokesh Reddy**
