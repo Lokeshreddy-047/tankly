@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/fuel_log.dart';
 import '../services/database_helper.dart';
 
@@ -21,7 +22,8 @@ class _ChartsScreenState extends State<ChartsScreen> {
   }
 
   Future<void> _loadData() async {
-    final data = await DatabaseHelper.instance.getAllLogs();
+    // FIXED: Changed from getAllLogs() to getAllFuelLogs() to match the updated DatabaseHelper
+    final data = await DatabaseHelper.instance.getAllFuelLogs();
     setState(() {
       // Reverse the list so it's chronological (oldest to newest) for left-to-right graphs
       _logs = data.reversed.toList();
@@ -36,7 +38,6 @@ class _ChartsScreenState extends State<ChartsScreen> {
     final validLogs = _logs.where((l) => l.odometer != null && l.litres != null).toList();
 
     for (int i = 1; i < validLogs.length; i++) {
-      // The '!' tells Dart we guarantee these aren't null because of our filter above
       double distance = validLogs[i].odometer! - validLogs[i - 1].odometer!;
       double mileage = distance / validLogs[i].litres!;
 
@@ -67,25 +68,53 @@ class _ChartsScreenState extends State<ChartsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _logs.length < 2
-          ? const Center(child: Text('Need at least 2 logs to show charts.'))
+          ? const Center(child: Text('Need at least 2 full logs to show charts.'))
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Mileage Trend (km/l)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Mileage Trend (km/L)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            SizedBox(
+            Container(
               height: 250,
-              child: _buildLineChart(_getMileageSpots(), Colors.green),
-            ),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.1)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ]
+              ),
+              child: _buildLineChart(_getMileageSpots(), Theme.of(context).colorScheme.primary),
+            ).animate().fade(duration: 500.ms).slideY(begin: 0.1, curve: Curves.easeOutQuad),
+
             const SizedBox(height: 40),
+
             const Text('Petrol Price Trend (₹)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            SizedBox(
+            Container(
               height: 250,
-              child: _buildLineChart(_getPriceSpots(), Colors.orange),
-            ),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.1)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ]
+              ),
+              child: _buildLineChart(_getPriceSpots(), Theme.of(context).colorScheme.secondary),
+            ).animate().fade(duration: 500.ms, delay: 200.ms).slideY(begin: 0.1, curve: Curves.easeOutQuad),
           ],
         ),
       ),
@@ -95,11 +124,17 @@ class _ChartsScreenState extends State<ChartsScreen> {
   Widget _buildLineChart(List<FlSpot> spots, Color lineColor) {
     return LineChart(
       LineChartData(
-        gridData: const FlGridData(show: true, drawVerticalLine: false),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1);
+          },
+        ),
         titlesData: const FlTitlesData(
           topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), // Hide bottom numbers to keep it clean
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [

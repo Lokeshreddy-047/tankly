@@ -5,7 +5,7 @@ class FuelLog {
   final double? pricePerLitre;
   final double totalAmount;
   final String date;
-  final bool isFullTank; // NEW: Tracks partial vs full fills
+  final bool isFullTank;
 
   FuelLog({
     this.id,
@@ -14,7 +14,7 @@ class FuelLog {
     this.pricePerLitre,
     required this.totalAmount,
     required this.date,
-    this.isFullTank = true, // Defaults to true
+    this.isFullTank = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,7 +25,7 @@ class FuelLog {
       'pricePerLitre': pricePerLitre,
       'totalAmount': totalAmount,
       'date': date,
-      'isFullTank': isFullTank ? 1 : 0, // Convert bool to int for SQLite
+      'isFullTank': isFullTank ? 1 : 0,
     };
   }
 
@@ -37,7 +37,7 @@ class FuelLog {
       pricePerLitre: map['pricePerLitre'],
       totalAmount: map['totalAmount'],
       date: map['date'],
-      isFullTank: map['isFullTank'] == 1, // Convert int back to bool
+      isFullTank: map['isFullTank'] == 1,
     );
   }
 }

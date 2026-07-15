@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'add_fuel_screen.dart';
 import '../models/fuel_log.dart';
+import '../models/maintenance_log.dart';
+import '../models/reminder.dart';
 import '../services/database_helper.dart';
-import '../utils/stats_helper.dart'; // Import the new math engine
-import 'charts_screen.dart';
-import 'maintenance_screen.dart';
-import 'reminders_screen.dart';
+import '../utils/stats_helper.dart';
+import '../utils/health_engine.dart';
 import '../widgets/empty_state.dart';
-import '../main.dart'; // Gives us access to themeNotifier
+import 'add_fuel_screen.dart';
 import 'bike_profile_screen.dart';
-import '../widgets/empty_state.dart';
+import '../main.dart'; // Ensure this points to where your themeNotifier is defined
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,6 +20,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   List<FuelLog> _logs = [];
+  List<MaintenanceLog> _maintLogs = [];
+  List<Reminder> _reminders = [];
   bool _isLoading = true;
 
   @override
@@ -30,17 +31,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refreshLogs() async {
-    final data = await DatabaseHelper.instance.getAllLogs();
-    setState(() {
-      _logs = data;
-      _isLoading = false;
-    });
+    final logs = await DatabaseHelper.instance.getAllFuelLogs();
+    final maintLogs = await DatabaseHelper.instance.getAllMaintenanceLogs();
+    final reminders = await DatabaseHelper.instance.getAllReminders();
+
+    if (mounted) {
+      setState(() {
+        _logs = logs;
+        _maintLogs = maintLogs;
+        _reminders = reminders;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    // Calculate live stats
     final totalSpent = StatsHelper.getTotalExpense(_logs);
     final avgMileage = StatsHelper.getAverageMileage(_logs);
     final totalDistance = StatsHelper.getTotalDistance(_logs);
@@ -59,7 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             },
           ),
-
           ValueListenableBuilder<ThemeMode>(
             valueListenable: themeNotifier,
             builder: (_, currentMode, __) {
@@ -83,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // --- THE NEW PREMIUM STATS CARD ---
+          // --- THE PREMIUM STATS CARD ---
           Container(
             margin: const EdgeInsets.all(16.0),
             padding: const EdgeInsets.all(24.0),
@@ -108,7 +113,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bike Name & Icon
                 Row(
                   children: [
                     Container(
@@ -127,7 +131,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // 4-Grid Stats Layout
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -147,9 +150,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Section Header
+          // --- TANKLY HEALTH SCORE ---
+          Builder(
+              builder: (context) {
+                final healthData = HealthEngine.calculateHealth(
+                  fuelLogs: _logs,
+                  maintLogs: _maintLogs,
+                  reminders: _reminders,
+                );
+                final int score = healthData['score'];
+                final String status = healthData['status'];
+                final List<String> warnings = healthData['warnings'];
+
+                Color scoreColor = Colors.green;
+                if (score < 70) scoreColor = Colors.orange;
+                if (score < 40) scoreColor = Colors.red;
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.1)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ]
+                  ),
+                  child: Row(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            height: 50,
+                            width: 50,
+                            child: CircularProgressIndicator(
+                              value: score / 100,
+                              backgroundColor: Colors.grey.withOpacity(0.2),
+                              color: scoreColor,
+                              strokeWidth: 6,
+                            ),
+                          ),
+                          Text('$score', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Tankly Health: $status', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            if (warnings.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  warnings.first,
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                );
+              }
+          ),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
             child: Row(
               children: [
                 Text(
@@ -171,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: Icons.local_gas_station_outlined,
               title: 'No Fill-ups Yet',
               message: 'Hit the plus button below to log your first petrol expense and start tracking your mileage.',
-            ) // We'll upgrade this to the EmptyState widget next
+            )
                 : ListView.builder(
               itemCount: _logs.length,
               itemBuilder: (context, index) {
@@ -195,6 +271,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _refreshLogs();
                   },
                   child: Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: ListTile(
@@ -212,7 +291,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         title: Text(
                             log.litres != null
-                                ? '${log.litres} L  •  ₹${log.totalAmount.toStringAsFixed(0)}'
+                                ? '${log.litres!.toStringAsFixed(1)} L  •  ₹${log.totalAmount.toStringAsFixed(0)}'
                                 : 'Quick Log  •  ₹${log.totalAmount.toStringAsFixed(0)}',
                             style: const TextStyle(fontWeight: FontWeight.bold)
                         ),
@@ -253,7 +332,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Helper widget for the grid items inside the stats card
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Row(
       children: [

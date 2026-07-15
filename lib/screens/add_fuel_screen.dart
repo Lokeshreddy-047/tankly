@@ -10,64 +10,58 @@ class AddFuelScreen extends StatefulWidget {
 }
 
 class _AddFuelScreenState extends State<AddFuelScreen> {
-  bool _isQuickLog = false; // The new toggle state
+  bool _isQuickLog = false;
   bool _isFullTank = true; // New state variable
-
-  final _odometerController = TextEditingController();
-  final _litresController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _totalAmountController = TextEditingController(); // New controller for quick log
   DateTime _selectedDate = DateTime.now();
 
-  Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Colors.blueGrey,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() { _selectedDate = picked; });
-    }
-  }
+  final _odometerController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _priceController = TextEditingController();
 
   Future<void> _saveLog() async {
-    FuelLog log;
+    // 1. Validation Checks
+    if (!_isQuickLog && _odometerController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter the odometer reading!'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
+    if (_amountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter the total amount spent!'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 2. Logic
+    FuelLog log;
     if (_isQuickLog) {
-      // Quick Log: Only save Total Amount and Date
-      if (_totalAmountController.text.isEmpty) return;
       log = FuelLog(
-        totalAmount: double.parse(_totalAmountController.text),
+        totalAmount: double.parse(_amountController.text),
         date: _selectedDate.toIso8601String(),
-        // odometer, litres, and pricePerLitre remain null
+        isFullTank: false, // Quick logs are never full tanks
       );
     } else {
-      // Full Log: Save everything and calculate total amount automatically
-      if (_odometerController.text.isEmpty || _litresController.text.isEmpty) return;
-
-      double litres = double.parse(_litresController.text);
-      double price = double.parse(_priceController.text.isEmpty ? "0" : _priceController.text);
+      double totalAmount = double.parse(_amountController.text);
+      double price = _priceController.text.isNotEmpty ? double.parse(_priceController.text) : 100.0;
+      double litres = totalAmount / price;
 
       log = FuelLog(
         odometer: double.parse(_odometerController.text),
         litres: litres,
         pricePerLitre: price,
-        totalAmount: litres * price, // Auto-calculated
+        totalAmount: totalAmount,
         date: _selectedDate.toIso8601String(),
-        isFullTank: _isFullTank, // Add this line!
+        isFullTank: _isFullTank,
       );
     }
 
@@ -78,28 +72,36 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Fuel'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Add Fuel Log'),
+        actions: [
+          Row(
+            children: [
+              const Text('Quick Log', style: TextStyle(fontSize: 14)),
+              Switch(
+                value: _isQuickLog,
+                onChanged: (val) => setState(() => _isQuickLog = val),
+                activeColor: Theme.of(context).colorScheme.secondary,
+              ),
+            ],
+          )
+        ],
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quick Log Toggle
-            SwitchListTile(
-              title: const Text('Amount Only (Past Log)', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('I don\'t know the odometer or litres.'),
-              activeColor: Colors.blueGrey,
-              value: _isQuickLog,
-              onChanged: (bool value) {
-                setState(() { _isQuickLog = value; });
-              },
-            ),
-            const Divider(height: 30),
-
-            // Date Picker (Always visible)
+            // Date Picker
             InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(12),
+              onTap: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _selectedDate = picked);
+              },
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -108,7 +110,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today, color: Colors.blueGrey),
+                    Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(width: 16),
                     Text(
                       'Date: ${_selectedDate.toIso8601String().substring(0, 10)}',
@@ -118,22 +120,46 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Dynamic Form Inputs
-            if (_isQuickLog) ...[
-              _buildTextField(_totalAmountController, 'Total Amount Spent (₹)', Icons.currency_rupee),
-            ] else ...[
-              _buildTextField(_odometerController, 'Current Odometer (km)', Icons.speed),
+            if (!_isQuickLog) ...[
+              TextField(
+                controller: _odometerController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Current Odometer (km)',
+                  prefixIcon: const Icon(Icons.speed),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
               const SizedBox(height: 16),
-              _buildTextField(_litresController, 'Litres Filled', Icons.water_drop_outlined),
-              const SizedBox(height: 16),
-              _buildTextField(_priceController, 'Price per Litre (₹)', Icons.currency_rupee),
             ],
 
-            // --- NEW FULL TANK TOGGLE ---
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Total Amount Paid (₹)',
+                prefixIcon: const Icon(Icons.currency_rupee),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             if (!_isQuickLog) ...[
-              const SizedBox(height: 10),
+              TextField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Price per Litre (Optional)',
+                  hintText: 'Default: ₹100.0',
+                  prefixIcon: const Icon(Icons.local_gas_station),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Full Tank Toggle
               Container(
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.05),
@@ -152,34 +178,22 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
               ),
             ],
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
                 onPressed: _saveLog,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text('Save Log', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-            )
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.blueGrey),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
